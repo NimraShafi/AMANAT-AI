@@ -3,7 +3,7 @@ export interface BankStatement {
   transaction_ref: string;
   bank_name: string;
   amount: number;
-  status: 'new' | 'waiting_purpose' | 'completed';
+  status: "new" | "waiting_purpose" | "completed";
   created_at: Date;
   updated_at: Date;
 }
@@ -14,8 +14,8 @@ export interface Donation {
   amount: number;
   transaction_ref: string;
   bank_name: string;
-  purpose: 'Gaza' | 'Orphan' | 'Ration' | string;
-  status: 'Verified' | 'Pending' | 'Rejected';
+  purpose: "Gaza" | "Orphan" | "Ration" | string;
+  status: "Verified" | "Pending" | "Rejected";
   created_at: Date;
   updated_at: Date;
 }
@@ -24,9 +24,9 @@ export interface ReviewQueue {
   id: string;
   donation_id: string;
   issue: string;
-  status: 'OPEN' | 'RESOLVED';
-  // created_at: Date;
-  resolved_at?: Date;
+  status: "OPEN" | "RESOLVED";
+  created_at: Date;
+  resolved_at?: string;
   donation?: Donation;
 }
 
