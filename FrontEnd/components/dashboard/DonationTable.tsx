@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Donation } from "@/types/database";
-import { formatCurrency, formatDate, getStatusColor } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface DonationTableProps {
   donations: Donation[];
@@ -33,15 +33,15 @@ export function DonationTable({ donations, loading = false }: DonationTableProps
 
   const filtered = donations.filter(
     (d) =>
-       (d.sender_number || "").toLowerCase().includes(search.toLowerCase()) ||
-  (d.transaction_ref || "").toLowerCase().includes(search.toLowerCase()) ||
-  (d.purpose || "").toLowerCase().includes(search.toLowerCase()) ||
-  (d.bank_name || "").toLowerCase().includes(search.toLowerCase())
+      (d.transaction_ref || "").toLowerCase().includes(search.toLowerCase()) ||
+      (d.purpose || "").toLowerCase().includes(search.toLowerCase()) ||
+      (d.bank_name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (d.sender_number || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const sorted = [...filtered].sort((a, b) => {
-    const aVal = a[sortField];
-    const bVal = b[sortField];
+    const aVal = a[sortField] || "";
+    const bVal = b[sortField] || "";
     if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
     if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
     return 0;
@@ -63,9 +63,7 @@ export function DonationTable({ donations, loading = false }: DonationTableProps
   if (loading) {
     return (
       <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
-        <CardHeader>
-          <Skeleton className="h-5 w-48" />
-        </CardHeader>
+        <CardHeader><Skeleton className="h-5 w-48" /></CardHeader>
         <CardContent>
           <Skeleton className="h-10 w-full mb-4" />
           <Skeleton className="h-[400px] w-full" />
@@ -81,55 +79,54 @@ export function DonationTable({ donations, loading = false }: DonationTableProps
       transition={{ duration: 0.5, delay: 0.2 }}
     >
       <Card className="border-white/10 bg-white/5 backdrop-blur-xl">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <CardTitle className="text-lg font-semibold text-white">
-            Donation Ledger
+            Verified Donation Ledger
           </CardTitle>
-          <div className="relative w-72">
+          <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search by number, ref, purpose..."
+              placeholder="Search reference or purpose..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="pl-10"
+              className="pl-10 bg-white/5 border-white/10 text-white"
             />
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border border-white/10 overflow-hidden">
             <Table>
-              <TableHeader>
-                <TableRow className="border-white/10 hover:bg-white/5">
+              <TableHeader className="bg-white/5">
+                <TableRow className="border-white/10 hover:bg-transparent">
                   <TableHead
-                    className="cursor-pointer text-slate-400 hover:text-white"
-                    onClick={() => handleSort("sender_number")}
+                    className="cursor-pointer text-slate-300 hover:text-white font-bold"
+                    onClick={() => handleSort("transaction_ref")}
                   >
-                    Sender {sortField === "sender_number" && (sortDirection === "asc" ? "↑" : "↓")}
+                    Reference ID {sortField === "transaction_ref" && (sortDirection === "asc" ? "↑" : "↓")}
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer text-slate-400 hover:text-white"
+                    className="cursor-pointer text-slate-300 hover:text-white font-bold"
                     onClick={() => handleSort("amount")}
                   >
                     Amount {sortField === "amount" && (sortDirection === "asc" ? "↑" : "↓")}
                   </TableHead>
-                  <TableHead className="text-slate-400">Bank</TableHead>
-                  <TableHead className="text-slate-400">Purpose</TableHead>
+                  <TableHead className="text-slate-300 font-bold">Payment Channel</TableHead>
+                  <TableHead className="text-slate-300 font-bold">Allocated Purpose</TableHead>
                   <TableHead
-                    className="cursor-pointer text-slate-400 hover:text-white"
+                    className="cursor-pointer text-slate-300 hover:text-white font-bold"
                     onClick={() => handleSort("status")}
                   >
                     Status {sortField === "status" && (sortDirection === "asc" ? "↑" : "↓")}
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer text-slate-400 hover:text-white"
+                    className="cursor-pointer text-slate-300 hover:text-white font-bold text-right"
                     onClick={() => handleSort("created_at")}
                   >
-                    Date {sortField === "created_at" && (sortDirection === "asc" ? "↑" : "↓")}
+                    Recorded Date {sortField === "created_at" && (sortDirection === "asc" ? "↑" : "↓")}
                   </TableHead>
-                  <TableHead className="text-slate-400">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -138,46 +135,33 @@ export function DonationTable({ donations, loading = false }: DonationTableProps
                     key={donation.id}
                     className="border-white/10 hover:bg-white/5 transition-colors"
                   >
-                    <TableCell className="font-medium text-white">
-                      {donation.sender_number}
+                    <TableCell className="font-mono text-xs text-indigo-300">
+                      #{donation.transaction_ref}
                     </TableCell>
-                    <TableCell className="text-emerald-400 font-semibold">
+                    <TableCell className="text-emerald-400 font-bold">
                       {formatCurrency(donation.amount)}
                     </TableCell>
-                    <TableCell className="text-slate-300">{donation.bank_name}</TableCell>
+                    <TableCell className="text-slate-300 text-sm">
+                      {donation.bank_name || "N/A"}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="border-white/20 text-slate-300">
-                        {donation.purpose}
+                      <Badge variant="outline" className="border-indigo-500/30 bg-indigo-500/5 text-indigo-200">
+                        {donation.purpose || "Unassigned"}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          donation.status === "Verified"
-                            ? "verified"
-                            : donation.status === "Pending"
-                            ? "pending"
-                            : "rejected"
-                        }
-                        className="capitalize"
+                        className={`capitalize font-bold ${
+                          donation.status === "Verified" 
+                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" 
+                            : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                        }`}
                       >
                         {donation.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-slate-400 text-sm">
+                    <TableCell className="text-slate-400 text-xs text-right">
                       {formatDate(donation.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {donation.status !== "Verified" && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-400">
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -185,31 +169,32 @@ export function DonationTable({ donations, loading = false }: DonationTableProps
             </Table>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-slate-400">
-              Showing {paginated.length} of {filtered.length} results
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-xs text-slate-500 italic">
+              Showing {paginated.length} of {filtered.length} entries
             </p>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-4">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="text-slate-400 hover:text-white disabled:opacity-30"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
               </Button>
-              <span className="text-sm text-slate-400 px-2 py-1">
-                Page {page} of {totalPages}
+              <span className="text-xs font-medium text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                Page {page} / {totalPages}
               </span>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="text-slate-400 hover:text-white disabled:opacity-30"
               >
-                <ChevronRight className="h-4 w-4" />
+                Next <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>

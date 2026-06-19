@@ -20,7 +20,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/donations", label: "Donations", icon: Heart },
   { href: "/review-queue", label: "Review Queue", icon: AlertTriangle },
-  { href: "/bank-statements", label: "Bank Statements", icon: Building2 },
+  { href: "/channel-statements", label: "Channel Statements", icon: Building2 },
 ];
 
 export function Sidebar() {

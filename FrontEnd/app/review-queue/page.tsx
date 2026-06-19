@@ -182,7 +182,7 @@ export default function ReviewQueuePage() {
                           <p className="text-sm text-slate-400 mt-1">
                             {review.donation?.sender_number && (
                               <>
-                                Donor: <span className="text-white">{review.donation.sender_number}</span>
+                                Donotion:
                                 {review.donation.amount && (
                                   <span className="ml-2 text-emerald-400">
                                     ({formatCurrency(review.donation.amount)})
@@ -208,7 +208,7 @@ export default function ReviewQueuePage() {
                         {review.donation?.transaction_ref && (
                           <p className="text-sm text-slate-400 mt-1">
                             <span className="text-slate-500 font-medium">Ref: </span>
-                            {review.donation.transaction_ref}
+                            #{review.donation.transaction_ref}
                           </p>
                         )}
                       </div>

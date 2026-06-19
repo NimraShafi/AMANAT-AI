@@ -66,10 +66,10 @@ export default function BankStatementsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">
-              Bank Statements
+              Channel Statements
             </h1>
             <p className="text-slate-400 mt-1">
-              Imported bank transaction records and their processing status
+              Imported channel transaction records and their processing status
             </p>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function BankStatementsPage() {
             <div className="relative w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search by reference or bank..."
+                placeholder="Search by reference or channel..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -134,7 +134,7 @@ export default function BankStatementsPage() {
                       onClick={() => handleSort("transaction_ref")}
                     >
                       <div className="flex items-center gap-1">
-                        Reference
+                        Reference ID
                         <ArrowUpDown className="h-3 w-3" />
                       </div>
                     </TableHead>
@@ -143,7 +143,7 @@ export default function BankStatementsPage() {
                       onClick={() => handleSort("bank_name")}
                     >
                       <div className="flex items-center gap-1">
-                        Bank
+                        Payment Channel
                         <ArrowUpDown className="h-3 w-3" />
                       </div>
                     </TableHead>
