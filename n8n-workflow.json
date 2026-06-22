@@ -1,0 +1,888 @@
+{
+  "name": "Amanat AI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "donation",
+        "options": {}
+      },
+      "id": "fbb31ffd-83fa-43b1-837d-b5bdba82a597",
+      "name": "WhatsApp Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "webhookId": "b869ef49-29ff-40e1-b2cf-9ecfadfd8188"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "19b07809-756a-4e73-9183-216f3e96a384",
+              "leftValue": "={{ Object.keys($binary).length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6f2a4ab7-0798-4c16-912b-40c5ff546c41",
+      "name": "Image or Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "\"Extract transaction details.\nReturn ONLY a JSON object with:\n'ref': (Transaction ID),\n'amount': (Numbers only),\n'bank_name': (Full bank name),\n'full_time': (Format: YYYY-MM-DD HH:mm:ss)\nExample: '2026-06-08 10:06:56'.\nDo not include milliseconds.\"",
+        "inputType": "binary",
+        "options": {}
+      },
+      "id": "8fff39a5-7a41-4f8b-9ed3-a83dad1e0779",
+      "name": "AI: Extract Receipt Info",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "D9qiYQdZz7YgHETd",
+          "name": "Google Gemini(PaLM) Api account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. AI ke text ka sahi rasta (path) target karein\nconst rawString = $json.content.parts[0].text;\n\n// 2. Markdown tags (```json) ko hatayein\nconst cleanedString = rawString.replace(/```json|```/g, \"\").trim();\n\n// 3. JSON ko object mein badal kar return karein\nreturn JSON.parse(cleanedString);"
+      },
+      "id": "17b915a8-c0a3-4990-8782-3c857b2fec43",
+      "name": "Clean AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "bank_statements",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=transaction_ref",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Clean AI Output\"].json.ref }}"
+            },
+            {
+              "keyName": "amount",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Clean AI Output\"].json.amount }}"
+            },
+            {
+              "keyName": "bank_name",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Clean AI Output\"].json.bank_name }}"
+            },
+            {
+              "keyName": "transaction_time",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Clean AI Output\"].json.full_time }}"
+            }
+          ]
+        }
+      },
+      "id": "96a454ca-97ce-4228-82e9-a746db346672",
+      "name": "Verify with Bank Statement",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        16
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://omit-egotism-barcode.ngrok-free.dev/send-reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}\",\n  \"messageText\": \"JazakAllah! Your donation of {{ $json.amount }} has been verified. \\n\\nTo which cause should we allocate this?\\n(Gaza, Orphan, Ration, or General?)\"\n}",
+        "options": {}
+      },
+      "id": "121ebe34-c5f8-4893-9d88-794e589df274",
+      "name": "Ask for Purpose",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "697c838e-a1d0-4343-9dde-edc45cb220b7",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6b86bef5-0811-4f71-be06-d149cfe81564",
+      "name": "Has Pending Donation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://omit-egotism-barcode.ngrok-free.dev/send-reply",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "be5db653-ec73-478b-bf5b-bd3fee85a70b",
+      "name": "Send Final Thank You",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2000,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://omit-egotism-barcode.ngrok-free.dev/send-reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}\",\n  \"messageText\": \"Hello! I couldn't find any pending donation for you. Please send a photo of your receipt first to get started.\"\n}",
+        "options": {}
+      },
+      "id": "3bea3f0a-7b8a-4b66-93d7-e6c4447c65f6",
+      "name": " No Donation Found",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://omit-egotism-barcode.ngrok-free.dev/send-reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}\",\n  \"messageText\": \"Verification Failed! We couldn't find a matching transaction for this receipt in our records. Please ensure you sent the correct screenshot.\"\n}",
+        "options": {}
+      },
+      "id": "6fb144b9-b100-47f0-bb7b-3e8497074679",
+      "name": "Verification failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2960,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "donations",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "sender_number",
+              "fieldValue": "={{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}"
+            },
+            {
+              "fieldId": "amount",
+              "fieldValue": "={{ $node[\"Clean AI Output\"].json.amount }}"
+            },
+            {
+              "fieldId": "transaction_ref",
+              "fieldValue": "={{ $node[\"Clean AI Output\"].json.ref }}"
+            },
+            {
+              "fieldId": "bank_name",
+              "fieldValue": "={{ $node[\"Clean AI Output\"].json.bank_name }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "processing"
+            },
+            {
+              "fieldId": "transaction_time",
+              "fieldValue": "={{ $node[\"Clean AI Output\"].json.full_time }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        16
+      ],
+      "id": "38380f10-79cf-4db4-aa0a-710699e9dfaf",
+      "name": "Create Donation",
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "review_queue",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "donation_id",
+              "fieldValue": "={{ $node[\"Create Donation\"].json.id }}"
+            },
+            {
+              "fieldId": "issue",
+              "fieldValue": "=Bank record not found / Reference mismatch"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "OPEN"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        208
+      ],
+      "id": "f9b0fc06-dcca-4f17-be80-f569b6b06754",
+      "name": "Create Review Entry",
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html_content": "=<div style=\"width: 480px; padding: 35px; background: #ffffff; border: 2px solid #e2e8f0; border-radius: 20px; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; position: relative; line-height: 1.6;\">\n    \n    <!-- Top Right: Issued Date -->\n    <div style=\"position: absolute; top: 20px; right: 25px; font-size: 11px; color: #64748b; text-align: right; line-height: 1.2;\">\n        Receipt Issued On:<br>\n        <span style=\"font-weight: 700; color: #1e293b;\">{{ new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }}</span>\n    </div>\n\n    <!-- Official Header -->\n    <div style=\"text-align: left; border-bottom: 3px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;\">\n        <div style=\"font-size: 26px; font-weight: 800; color: #1e40af; letter-spacing: -0.5px; margin-bottom: 4px;\">AL-KHIDMAT FOUNDATION</div>\n        <div style=\"font-size: 12px; color: #475569; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;\">Donation Receipt</div>\n    </div>\n\n    <!-- Main Content -->\n    <div style=\"margin-bottom: 30px;\">\n        <p style=\"font-size: 16px; color: #334155; margin: 0;\">\n            JazakAllah Khair! We gratefully acknowledge your contribution for <b style=\"color: #0f172a;\">{{ $node[\"Classify Donation Category\"].json.content.parts[0].text }}</b>, which has been successfully verified.\n        </p>\n    </div>\n\n    <!-- Details Table -->\n    <div style=\"background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;\">\n        <div style=\"display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;\">\n            <span style=\"color: #475569; font-size: 12px; font-weight: 600;\">VOUCHER NO:</span>\n            <span style=\"font-weight: 800; font-size: 12px; color: #1e293b;\">AKF-{{ Math.floor(Math.random() * 90000) + 10000 }}</span>\n        </div>\n        \n        <div style=\"display: flex; justify-content: space-between; margin-bottom: 12px;\">\n            <span style=\"color: #475569; font-size: 14px; font-weight: 500;\">Payment Channel:</span>\n            <span style=\"font-weight: 700; font-size: 14px; color: #0f172a;\">{{ $node[\"Fetch Pending Donation\"].json.bank_name }}</span>\n        </div>\n        \n        <div style=\"display: flex; justify-content: space-between; margin-bottom: 12px;\">\n            <span style=\"color: #475569; font-size: 14px; font-weight: 500;\">Reference ID:</span>\n            <span style=\"font-weight: 700; font-size: 14px; color: #0f172a;\">#{{ $node[\"Fetch Pending Donation\"].json.transaction_ref }}</span>\n        </div>\n        \n        <div style=\"display: flex; justify-content: space-between; margin-bottom: 12px;\">\n            <span style=\"color: #475569; font-size: 14px; font-weight: 500;\">Donation Date:</span>\n            <span style=\"font-weight: 700; font-size: 14px; color: #0f172a;\">\n                {{ $node[\"Fetch Pending Donation\"].json.transaction_time ? new Date($node[\"Fetch Pending Donation\"].json.transaction_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Verified' }}\n            </span>\n        </div>\n\n        <div style=\"margin-top: 15px; padding-top: 15px; border-top: 3px solid #1e40af; display: flex; justify-content: space-between; align-items: center;\">\n            <span style=\"color: #0f172a; font-weight: 800; font-size: 16px;\">AMOUNT RECEIVED</span>\n            <span style=\"color: #1e40af; font-weight: 900; font-size: 24px;\">PKR {{ $node[\"Fetch Pending Donation\"].json.amount }}</span>\n        </div>\n    </div>\n\n    <!-- Footer Text -->\n    <div style=\"margin-top: 30px; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px;\">\n        <p style=\"font-size: 12px; color: #64748b; margin-bottom: 15px; font-style: italic;\">\n            This receipt is automatically generated upon verification.\n        </p>\n        <div style=\"display: inline-flex; align-items: center; padding: 6px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; border-radius: 30px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;\">\n            Verified by Amanat AI\n        </div>\n    </div>\n</div>",
+        "viewPortWidth": "={{ 520 }}",
+        "viewPortHeight": "={{ 500 }}",
+        "response_format_html": "png"
+      },
+      "type": "n8n-nodes-htmlcsstoimage.htmlCssToImage",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        272
+      ],
+      "id": "a8d675df-8a95-4539-af68-7ea11a249fce",
+      "name": "HTML/CSS to Image",
+      "credentials": {
+        "htmlcsstoimgApi": {
+          "id": "Zm95YTp1cbCvpvyQ",
+          "name": "HTML to Image account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "donations",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "transaction_ref",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Clean AI Output\"].json.ref }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "6f011b9f-060e-4e89-a37d-e71c5505c7b9",
+      "name": "Search Existing Record",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6c32d17b-0173-4aae-b0a4-0b63592e21d1",
+              "leftValue": "={{ $node[\"Search Existing Record\"].json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1296,
+        0
+      ],
+      "id": "9ad3e809-31e8-4ea5-8205-e12b98bfcb12",
+      "name": "Is Duplicate?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "bank_statements",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "transaction_ref",
+              "condition": "eq",
+              "keyValue": "={{ $('Clean AI Output').item.json.ref }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "Used"
+            }
+          ]
+        }
+      },
+      "id": "d483460f-767c-4b31-8858-0da56b4413f3",
+      "name": "Mark Bank Entry as Used",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://omit-egotism-barcode.ngrok-free.dev/send-reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}\",\n  \"messageText\": \"Dear Donor, our system indicates that this transaction (Ref ID: #{{ $node[\"Clean AI Output\"].json.ref }}) has already been successfully verified. Thank you for your continued support.\"\n}",
+        "options": {}
+      },
+      "id": "2271cbc5-308d-451f-9384-3852d6ded3c0",
+      "name": "Send Duplicate Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1696,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "donations",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "sender_number",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"WhatsApp Inbound Webhook\"].json.body.sender }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "processing"
+            }
+          ]
+        }
+      },
+      "id": "176a8736-f885-4476-a6d8-bfa40f863758",
+      "name": "Fetch Pending Donation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        432,
+        384
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $node[\"HTML/CSS to Image\"].json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": "={{ true }}",
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1696,
+        272
+      ],
+      "id": "5924a8c0-ff86-4518-949e-1c1080b69d2b",
+      "name": "Download Receipt Image"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "donations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Fetch Pending Donation\"].json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "purpose",
+              "fieldValue": "={{ $node[\"Classify Donation Category\"].json.content.parts[0].text }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Verified"
+            }
+          ]
+        }
+      },
+      "id": "3f1599f3-0ed5-485b-aae5-3fe08d769190",
+      "name": "Finalize Donation Record",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        272
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "k0KQkiN8q8WPjY7X",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "496dc828-212e-4a7c-a474-aad87c958dcd",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "=0",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "23178c1f-58f0-4088-a14e-e1d7aa0e0d36",
+      "name": "Validate with Statement",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2272,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=The user has sent this purpose: \"{{ $node[\"WhatsApp Inbound Webhook\"].json.body.message }}\". Classify it into one of these exact categories: Gaza, Orphan, Ration, or General. Return ONLY the category name, nothing else."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "3e7cbebc-eaa8-41fa-9d56-7bb414f3d432",
+      "name": "Classify Donation Category",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        272
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "D9qiYQdZz7YgHETd",
+          "name": "Google Gemini(PaLM) Api account 4"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Inbound Webhook": {
+      "main": [
+        [
+          {
+            "node": "Image or Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image or Text?": {
+      "main": [
+        [
+          {
+            "node": "AI: Extract Receipt Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Pending Donation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Extract Receipt Info": {
+      "main": [
+        [
+          {
+            "node": "Clean AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean AI Output": {
+      "main": [
+        [
+          {
+            "node": "Search Existing Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify with Bank Statement": {
+      "main": [
+        [
+          {
+            "node": "Validate with Statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for Purpose": {
+      "main": [
+        []
+      ]
+    },
+    "Has Pending Donation?": {
+      "main": [
+        [
+          {
+            "node": "Classify Donation Category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": " No Donation Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Final Thank You": {
+      "main": [
+        [
+          {
+            "node": "Finalize Donation Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Donation": {
+      "main": [
+        [
+          {
+            "node": "Verify with Bank Statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Review Entry": {
+      "main": [
+        [
+          {
+            "node": "Verification failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML/CSS to Image": {
+      "main": [
+        [
+          {
+            "node": "Download Receipt Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Existing Record": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Send Duplicate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Donation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Bank Entry as Used": {
+      "main": [
+        [
+          {
+            "node": "Ask for Purpose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Donation": {
+      "main": [
+        [
+          {
+            "node": "Has Pending Donation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Receipt Image": {
+      "main": [
+        [
+          {
+            "node": "Send Final Thank You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate with Statement": {
+      "main": [
+        [
+          {
+            "node": "Mark Bank Entry as Used",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Review Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Donation Category": {
+      "main": [
+        [
+          {
+            "node": "HTML/CSS to Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "db0b06e2-4e68-41f9-8710-7148af2eda45",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7e651eb2d899d0a6fd60fba266ba5beeb4d3f452b8b1398f33d5ffe1959df748"
+  },
+  "nodeGroups": [],
+  "id": "hxCnEETLYC1O3pl0",
+  "tags": []
+}
